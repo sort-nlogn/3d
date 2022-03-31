@@ -47,7 +47,7 @@ void rasterize(float pos[], int ind[]){
     }
 }
 
-void vertex(float coords[], float proj[4][4], int indeces[]){
+void vertex(float coords[], float proj[4][4], int indices[]){
     float pos[4 * num_vertices];
     for(int i = 0; i < num_vertices; i++){
         for(int j = 0; j < 3; j++) // copy coords + w addition
@@ -67,7 +67,7 @@ void vertex(float coords[], float proj[4][4], int indeces[]){
             pos[4 * i + j] = new_coords[j] / new_coords[3]; 
     }
 
-    rasterize(pos, indeces);
+    rasterize(pos, indices);
 }
 
 void process_keyboard(float coords[], float c[]){
@@ -115,7 +115,7 @@ int main(){
                       0.5,  0.5, -2.0,
                       0.0,  0.5, -3.0};
 
-    int indeces[] = {2, 1, 0, 0, 4, 3,
+    int indices[] = {2, 1, 0, 0, 4, 3,
                      0, 1, 4, 2, 0, 5,
                      0, 3, 5, 1, 2, 4,
                      4, 2, 5, 3, 4, 5};
@@ -124,7 +124,7 @@ int main(){
     float centroid[3] = {-0.5, -0.5, -2.0};
 
     while(1){
-        vertex(coords, projection, indeces);
+        vertex(coords, projection, indices);
         if(kbhit()){
             process_keyboard(coords, centroid);
         }
