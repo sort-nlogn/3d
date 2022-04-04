@@ -1,9 +1,13 @@
 #include <iostream>
 #include <graphics.h>
 #include "quat.hpp"
+#include "rasterizer.hpp"
 
 #define f 100.0
 #define n 1.0
+#define a -(f + n) / (f - n)
+#define b -2*f*n / (f - n)
+
 #define num_vertices 6
 #define num_faces 8
 #define sc(x) (int)round(x)
@@ -18,56 +22,78 @@ void cross(float u[], float v[], float *buff){
 }
 
 float dot(float u[], float v[]){
-    float result = u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
-    return result;
+    return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 }
 
-void rasterize(float pos[], int ind[]){
+bool is_visible(float p1[], float p2[], float p3[]){ // from origin
+    float v1[3] = {p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]};
+    float v2[3] = {p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]};
+    float to_origin[3] = {-p1[0], -p1[1], -p1[2]}, buff[3] = {0.0};
+    cross(v1, v2, buff);
+    return dot(buff, to_origin) > 0;
+}
+
+void rasterize(float pos[], int ind[], bool visible[], int col[]){
     for(int i = 0; i < num_vertices; i++){
-        pos[4 * i] = (pos[4 * i] * 0.5 + 0.5) * width;
-        pos[4*i + 1] = (pos[4*i + 1] * 0.5 + 0.5) * height;
-        // printf("%.3f %.3f\n", pos[4 * i], pos[4 * i + 1]);
+        pos[3 * i] = (pos[3 * i] * 0.5 + 0.5) * width;
+        pos[3*i + 1] = (pos[3*i + 1] * 0.5 + 0.5) * height;
     }
 
     for(int i = 0; i < num_faces; i++){
+        if(!visible[i])
+            continue;
         float v1[2], v2[2], v3[2];
-        v1[0] = pos[4 * ind[3 * i]];
-        v1[1] = pos[4 * ind[3 * i] + 1];
+        v1[0] = pos[3 * ind[3 * i]];
+        v1[1] = pos[3 * ind[3 * i] + 1];
 
-        v2[0] = pos[4 * ind[3 * i + 1]];
-        v2[1] = pos[4 * ind[3 * i + 1] + 1];
+        v2[0] = pos[3 * ind[3 * i + 1]];
+        v2[1] = pos[3 * ind[3 * i + 1] + 1];
 
-        v3[0] = pos[4 * ind[3 * i + 2]];
-        v3[1] = pos[4 * ind[3 * i + 2] + 1];
+        v3[0] = pos[3 * ind[3 * i + 2]];
+        v3[1] = pos[3 * ind[3 * i + 2] + 1];
 
-        line(sc(v1[0]), sc(v1[1]), sc(v2[0]), sc(v2[1]));
-        line(sc(v2[0]), sc(v2[1]), sc(v3[0]), sc(v3[1]));
-        line(sc(v3[0]), sc(v3[1]), sc(v1[0]), sc(v1[1]));
+        int shape[12] = {sc(v1[0]), sc(v1[1]),
+                         sc(v2[0]), sc(v2[1]),
+                         sc(v3[0]), sc(v3[1]),
+                         sc(v1[0]), sc(v1[1])};
+
+        setfillstyle(SOLID_FILL, col[i]);
+        fillpoly(4, shape);
 
     }
 }
 
-void vertex(float coords[], float proj[4][4], int indices[]){
-    float pos[4 * num_vertices];
-    for(int i = 0; i < num_vertices; i++){
-        for(int j = 0; j < 3; j++) // copy coords + w addition
-            pos[4 * i + j] = coords[3 * i + j];
-        pos[4 * i + 3] = 1.0;
+void cull_faces(float pos[], int ind[], bool visible[]){
+    for(int i = 0; i < num_faces; i++){
+        float p1[3], p2[3], p3[3];
+        p1[0] = pos[3 * ind[3 * i]];
+        p1[1] = pos[3 * ind[3 * i] + 1];        
+        p1[2] = pos[3 * ind[3 * i] + 2];
 
-        float new_coords[4] = {0.0};
-        for(int j = 0; j < 4; j++){ // multiplying by projection matrix
-            float dot = 0.0;
-            for(int k = 0; k < 4; k++){
-                dot += proj[j][k] * pos[4 * i + k];
-            }
-            new_coords[j] = dot;
-        }
+        p2[0] = pos[3 * ind[3 * i + 1]];
+        p2[1] = pos[3 * ind[3 * i + 1] + 1];
+        p2[2] = pos[3 * ind[3 * i + 1] + 2];
 
-        for(int j = 0; j < 4; j++) // w-divide
-            pos[4 * i + j] = new_coords[j] / new_coords[3]; 
+        p3[0] = pos[3 * ind[3 * i + 2]];
+        p3[1] = pos[3 * ind[3 * i + 2] + 1];
+        p3[2] = pos[3 * ind[3 * i + 2] + 2];
+        if(is_visible(p1, p2, p3))
+            visible[i] = true;
     }
+}
 
-    rasterize(pos, indices);
+void vertex(float coords[], int indices[], int colors[]){
+    float pos[3 * num_vertices];
+    bool visible[num_faces] = {false};
+    cull_faces(coords, indices, visible);
+    for(int i = 0; i < num_vertices; i++){
+        float x = coords[3*i], y = coords[3*i+1], z = coords[3*i+2];
+        x = n * x / -z;
+        y = n * y / -z;
+        z = (a * z + b) / -z;
+        pos[3 * i] = x, pos[3 * i + 1] = y, pos[3 * i + 2] = z; 
+    }
+    rasterize(pos, indices, visible, colors);
 }
 
 void process_keyboard(float coords[], float c[]){
@@ -103,28 +129,27 @@ void process_keyboard(float coords[], float c[]){
 int main(){
     int win = initwindow(620, 480, "3d");
 
-    float projection[4][4] = {{n, 0, 0, 0},
-                               {0, n, 0, 0},
-                               {0, 0, -(f+n) / (f-n), -2*f*n / (f-n)},
-                               {0, 0, -1, 0}};
-
     float coords[] = {-0.5, -0.5, -2.0,
                       0.5, -0.5, -2.0,
-                      0.0, -0.5, -3.0,
+                      0.0, -0.5, -2.8,
                      -0.5,  0.5, -2.0,
                       0.5,  0.5, -2.0,
-                      0.0,  0.5, -3.0};
+                      0.0,  0.5, -2.8};
 
     int indices[] = {2, 1, 0, 0, 4, 3,
                      0, 1, 4, 2, 0, 5,
                      0, 3, 5, 1, 2, 4,
                      4, 2, 5, 3, 4, 5};
 
-
+    int colors[] = {RGB(255, 0, 0), RGB(255, 156, 0),
+                    RGB(255, 255, 0), RGB(0, 255, 0),
+                    RGB(0, 191, 255), RGB(0, 0, 255),
+                    RGB(128, 0, 255), RGB(255, 0, 0)};
+ 
     float centroid[3] = {-0.5, -0.5, -2.0};
 
     while(1){
-        vertex(coords, projection, indices);
+        vertex(coords, indices, colors);
         if(kbhit()){
             process_keyboard(coords, centroid);
         }
