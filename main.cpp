@@ -2,6 +2,7 @@
 #include <graphics.h>
 #include "quat.hpp"
 #include "rasterizer.hpp"
+#include "rasterizer.hpp"
 
 #define f 100.0
 #define n 1.0
@@ -14,6 +15,8 @@
 
 #define width 620
 #define height 480
+
+int zoom = 1;
 
 void cross(float u[], float v[], float *buff){
     buff[0] = u[1] * v[2] - v[1] * u[2];
@@ -77,8 +80,7 @@ void cull_faces(float pos[], int ind[], bool visible[]){
         p3[0] = pos[3 * ind[3 * i + 2]];
         p3[1] = pos[3 * ind[3 * i + 2] + 1];
         p3[2] = pos[3 * ind[3 * i + 2] + 2];
-        if(is_visible(p1, p2, p3))
-            visible[i] = true;
+        visible[i] = is_visible(p1, p2, p3);
     }
 }
 
@@ -88,41 +90,44 @@ void vertex(float coords[], int indices[], int colors[]){
     cull_faces(coords, indices, visible);
     for(int i = 0; i < num_vertices; i++){
         float x = coords[3*i], y = coords[3*i+1], z = coords[3*i+2];
-        x = n * x / -z;
-        y = n * y / -z;
+        x = n * x / (-z * zoom);
+        y = n * y / (-z * zoom);
         z = (a * z + b) / -z;
         pos[3 * i] = x, pos[3 * i + 1] = y, pos[3 * i + 2] = z; 
     }
     rasterize(pos, indices, visible, colors);
 }
 
-void process_keyboard(float coords[], float c[]){
+void process_keyboard(float pos[], float c[]){
     char ch = (char)getch();
     float axis[3] = {0.0};
-    float theta = 0.1;
+    float theta = 0.25;
+
+    zoom = (ch == '+' && zoom > 1)? zoom-1: 
+           (ch == '-' && zoom < 5)? zoom+1: zoom;
 
     if(ch == 75 || ch == 77){
         axis[1] = 1.0;
-        if(ch == 77)
-            theta *= -1.0;
+        theta = ch == 77? theta * -1: theta;
     }else if(ch == 72 || ch == 80){
         axis[0] = 1.0;
-        if(ch == 80)
-            theta *= -1.0; 
-    }else{
+        theta = ch == 80? theta * -1: theta;
+    }else if(ch == 'q' || ch == 'e'){
+        axis[2] = 1.0;
+        theta = ch == 'e'? theta * -1: theta;
+    }else
         return;
-    }
 
     for(int i = 0; i < num_vertices; i++){
-        float v[3] = {coords[3 * i] - c[0],
-            coords[3 * i + 1] - c[1],
-            coords[3 * i + 2] - c[2]};
+        float v[3] = {pos[3 * i] - c[0], 
+                      pos[3 * i + 1] - c[1], 
+                      pos[3 * i + 2] - c[2]};
 
         q_rotate(v, theta, axis, v);
 
-        coords[3 * i] = c[0] + v[0];
-        coords[3 * i + 1] = c[1] + v[1];
-        coords[3 * i + 2] = c[2] + v[2];
+        pos[3 * i] = c[0] + v[0];
+        pos[3 * i + 1] = c[1] + v[1];
+        pos[3 * i + 2] = c[2] + v[2];
     }
 }
 
@@ -146,7 +151,16 @@ int main(){
                     RGB(0, 191, 255), RGB(0, 0, 255),
                     RGB(128, 0, 255), RGB(255, 0, 0)};
  
-    float centroid[3] = {-0.5, -0.5, -2.0};
+    float centroid[3] = {0.0};
+    for(int i = 0; i < num_vertices; i++){
+        centroid[0] += coords[3 * i];
+        centroid[1] += coords[3 * i + 1];
+        centroid[2] += coords[3 * i + 2];
+    }
+
+    centroid[0] /= num_vertices;
+    centroid[1] /= num_vertices;
+    centroid[2] /= num_vertices;
 
     while(1){
         vertex(coords, indices, colors);

@@ -7,8 +7,8 @@ void fill_flat_bottom(float v1[], float v2[], float v3[]){
 
     float x1 = v1[0], x2 = v1[0];
 
-    for(int y = v1[1]; y <= v2[1]; y++){
-        line(x1, y, x2, y);
+    for(int y = (int)v1[1]; y <= (int)v2[1]; y++){
+        line((int)x1, (int)y, (int)x2, (int)y);
         x1 += slope1;
         x2 += slope2;
     }
@@ -20,8 +20,8 @@ void fill_flat_top(float v1[], float v2[], float v3[]){
 
     float x1 = v3[0], x2 = v3[0];
 
-    for(int y = v3[1]; y >= v1[1]; y--){
-        line(x1, y, x2, y);
+    for(int y = (int)v3[1]; y >= (int)v1[1]; y--){
+        line((int)x1, (int)y, (int)x2, (int)y);
         x1 -= slope1;
         x2 -= slope2;
     }
@@ -47,3 +47,15 @@ void rasterize_triangle(float v1[], float v2[], float v3[]){
         fill_flat_top(v2, v4, v3);
     }
 }
+
+// void lined_fill(float v1[], float v2[], float v3[]){
+//     float y_from = min(v1[1], min(v2[1], v3[1]));
+//     float y_to = max(v1[1], max(v2[1], v3[1]));
+
+//     int y_from_i = (int)y_from;
+//     int y_to_i = (int)y_to;
+
+//     for(int y = y_from_i; y < y_to_i; y++){
+//         int x_from = 
+//     }
+// }
