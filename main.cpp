@@ -1,8 +1,6 @@
 #include <iostream>
 #include <graphics.h>
 #include "quat.hpp"
-#include "rasterizer.hpp"
-#include "rasterizer.hpp"
 
 #define f 100.0
 #define n 1.0
