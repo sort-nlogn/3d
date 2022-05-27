@@ -41,8 +41,8 @@ void rasterize(float pos[], int ind[], bool visible[], int col[]){
     }
 
     for(int i = 0; i < num_faces; i++){
-        // if(!visible[i])
-        //     continue;
+        if(!visible[i])
+            continue;
         float v1[2], v2[2], v3[2];
         v1[0] = pos[3 * ind[3 * i]];
         v1[1] = pos[3 * ind[3 * i] + 1];
@@ -58,10 +58,10 @@ void rasterize(float pos[], int ind[], bool visible[], int col[]){
                          sc(v3[0]), sc(v3[1]),
                          sc(v1[0]), sc(v1[1])};
 
-        drawpoly(4, shape);
+        // drawpoly(4, shape);
         
-        // setfillstyle(SOLID_FILL, col[i]);
-        // fillpoly(4, shape);
+        setfillstyle(SOLID_FILL, col[i]);
+        fillpoly(4, shape);
 
     }
 }
@@ -87,7 +87,7 @@ void cull_faces(float pos[], int ind[], bool visible[]){
 void vertex(float coords[], int indices[], int colors[]){
     float pos[3 * num_vertices];
     bool visible[num_faces] = {true};
-    // cull_faces(coords, indices, visible);
+    cull_faces(coords, indices, visible);
     for(int i = 0; i < num_vertices; i++){
         float x = coords[3*i], y = coords[3*i+1], z = coords[3*i+2];
         x = n * x / (-z * zoom);
@@ -96,6 +96,14 @@ void vertex(float coords[], int indices[], int colors[]){
         pos[3 * i] = x, pos[3 * i + 1] = y, pos[3 * i + 2] = z; 
     }
     rasterize(pos, indices, visible, colors);
+}
+
+void move(float coords[], float dx, float dy, float dz){
+    for(int i = 0; i < num_vertices; i++){
+        coords[3 * i] += dx;
+        coords[3 * i + 1] += dy; 
+        coords[3 * i + 2] += dz; 
+    }
 }
 
 void process_keyboard(float pos[], float c[]){
@@ -115,8 +123,27 @@ void process_keyboard(float pos[], float c[]){
     }else if(ch == 'q' || ch == 'e'){
         axis[2] = 1.0;
         theta = ch == 'e'? theta * -1: theta;
-    }else
+    }else if(ch == 'w'){
+        move(pos, 0.0, -0.1, 0.0);
         return;
+    }else if(ch == 'a'){
+        move(pos, -0.1, 0.0, 0.0);
+        return;
+    }else if(ch == 's'){
+        move(pos, 0.0, 0.1, 0.0);
+        return;
+    }else if(ch == 'd'){
+        move(pos, 0.1, 0.0, 0.0);
+        return;
+    }else if(ch == 'h'){
+        move(pos, 0.0, 0.0, 0.1);
+        return;
+    }else if(ch == 'j'){
+        move(pos, 0.0, 0.0, -0.1);
+        return;
+    }else{
+        return;
+    }
 
     for(int i = 0; i < num_vertices; i++){
         float v[3] = {pos[3 * i] - c[0], 
@@ -150,19 +177,18 @@ int main(){
                     RGB(255, 255, 0), RGB(0, 255, 0),
                     RGB(0, 191, 255), RGB(0, 0, 255),
                     RGB(128, 0, 255), RGB(255, 0, 0)};
- 
-    float centroid[3] = {0.0};
-    for(int i = 0; i < num_vertices; i++){
-        centroid[0] += coords[3 * i];
-        centroid[1] += coords[3 * i + 1];
-        centroid[2] += coords[3 * i + 2];
-    }
-
-    centroid[0] /= num_vertices;
-    centroid[1] /= num_vertices;
-    centroid[2] /= num_vertices;
 
     while(1){
+        float centroid[3] = {0.0};
+        for(int i = 0; i < num_vertices; i++){
+            centroid[0] += coords[3 * i];
+            centroid[1] += coords[3 * i + 1];
+            centroid[2] += coords[3 * i + 2];
+        }
+
+        centroid[0] /= num_vertices;
+        centroid[1] /= num_vertices;
+        centroid[2] /= num_vertices;
         vertex(coords, indices, colors);
         if(kbhit()){
             process_keyboard(coords, centroid);
